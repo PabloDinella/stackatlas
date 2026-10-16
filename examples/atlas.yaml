@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=../schema/stackatlas.schema.json
+#
+# An example atlas. This is the "central" file: it pulls in the stackatlas.yaml
+# of each repository and can also describe projects that have no repository.
+title: Jane's projects
+
+include:
+  # In real life these point at repositories, e.g. github:jane/recipe-box
+  # or gitlab:choir/website. Relative paths work too:
+  - recipe-box/stackatlas.yaml
+
+projects:
+  # A project defined right here, with no repository of its own
+  - name: Choir website
+    owner: Community Choir
+    group: Choir
+    type: website
+    url: https://example.org
+    domains: [example.org]
+    resources:
+      - hetzner/vps
+      - coolify/deploy
+      - cloudflare/dns
+
+  - name: Rehearsal reminders
+    owner: Community Choir
+    group: Choir
+    type: service
+    status: planned
+    resources:
+      - home-lab/server
+
+services:
+  # Services that are not in the built-in catalog can be declared here
+  home-lab:
+    name: Home lab
+    category: infrastructure
+    resources:
+      server: { name: Mini PC, notes: Runs everything self-hosted }
+
+domains:
+  # Registrar and expiry come from RDAP automatically; add what RDAP can't know
+  example.org:
+    auto_renew: true
+    cost: 10
+    currency: USD

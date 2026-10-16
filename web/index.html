@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stack atlas</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='8' cy='16' r='4' fill='%23378add'/><circle cx='24' cy='8' r='4' fill='%231d9e75'/><circle cx='24' cy='24' r='4' fill='%237f77dd'/><path d='M8 16L24 8M8 16L24 24' stroke='%23888780' stroke-width='2'/></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1 id="title">Stack atlas</h1>
+  <span id="status"></span>
+  <button id="warnings-btn" hidden title="Show warnings (W)">Warnings<kbd>W</kbd></button>
+  <button id="fit" title="Fit to screen (F)">Fit<kbd>F</kbd></button>
+  <button id="refresh" title="Reload (R)">Reload<kbd>R</kbd></button>
+</header>
+
+<form id="open" hidden>
+  <label for="atlas-input">Atlas address</label>
+  <input id="atlas-input" name="atlas" placeholder="github:owner/repo/atlas.yaml" autocomplete="off" spellcheck="false" required>
+  <button type="submit">Open<kbd>Enter</kbd></button>
+  <p class="hint">A <code>github:</code> or <code>gitlab:</code> reference, or any https URL of a YAML file. Public repositories only;
+    <a href="https://github.com/PabloDinella/stackatlas#self-hosting">self-host stackatlas</a> for private ones.
+    <a href="#" id="try-example">Try the example</a>.</p>
+</form>
+
+<div class="legend">
+  <span class="domain">Domain</span>
+  <span class="soon">Expires within 60 days</span>
+  <span class="expired">Expired</span>
+  <span class="project">Project</span>
+  <span class="service">Service / resource</span>
+  <span class="orphan">Planned or unlinked</span>
+  <span class="hint">Click to focus · <kbd>Esc</kbd> shows everything</span>
+</div>
+
+<div class="stage">
+  <div id="cy"></div>
+  <aside id="details" class="panel"><button class="close" aria-label="Close (Esc)">✕</button><div class="body"></div></aside>
+  <aside id="warnings" class="panel"><button class="close" aria-label="Close (Esc)">✕</button><div class="body"></div></aside>
+  <div id="error"></div>
+</div>
+
+<script src="vendor/cytoscape.min.js"></script>
+<script src="vendor/elk.bundled.js"></script>
+<script src="vendor/cytoscape-elk.js"></script>
+<script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+# Example for a home lab. Put GITHUB_TOKEN / GITLAB_TOKEN in a .env file next
+# to this one (only needed for private repositories).
+services:
+  stackatlas:
+    image: ghcr.io/pablodinella/stackatlas:latest
+    command: ["github:your-user/your-atlas/atlas.yaml"]
+    # Or keep the atlas on disk instead:
+    # command: ["/atlas"]
+    # volumes: ["./atlas:/atlas:ro"]
+    environment:
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GITLAB_TOKEN: ${GITLAB_TOKEN:-}
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
