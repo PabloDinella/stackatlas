@@ -25,14 +25,21 @@ Its files are in [`examples/`](examples).
 
 ## Quick start
 
-Open any public atlas in the [hosted viewer](https://pablodinella.github.io/stackatlas/),
-no install needed: paste its address, or link to it with `?atlas=`, like the
-[example](https://pablodinella.github.io/stackatlas/?atlas=github:PabloDinella/stackatlas/examples/atlas.yaml).
+**1. Describe a repository.** Ask your coding agent (Claude Code, Codex,
+Cursor…), in the repository:
 
-Or run it yourself:
+```text
+Set up stackatlas here: https://raw.githubusercontent.com/PabloDinella/stackatlas/main/docs/agent-instructions.md
+```
+
+It writes `stackatlas.yaml` and makes sure future changes keep it up to date.
+Prefer writing it yourself? See [below](#describing-a-repository).
+
+**2. See it.** Open `https://pablodinella.github.io/stackatlas/?atlas=github:you/your-repo`,
+or run it yourself with Docker:
 
 ```bash
-docker run --rm -p 8080:8080 ghcr.io/pablodinella/stackatlas github:PabloDinella/stackatlas/examples/atlas.yaml
+docker run --rm -p 8080:8080 ghcr.io/pablodinella/stackatlas github:you/your-repo
 ```
 
 and open <http://localhost:8080>.
@@ -70,18 +77,6 @@ projects:
 `owner` and `group` set defaults for every project in the file; a project can
 override them. The first line lets editors with the YAML language server (e.g.
 VS Code's YAML extension) autocomplete and check the file.
-
-**Let an AI agent write it.** In your repository, give Claude Code, Codex,
-Cursor or another coding agent this prompt:
-
-```text
-Set up stackatlas in this repository by following https://raw.githubusercontent.com/PabloDinella/stackatlas/main/docs/agent-instructions.md
-```
-
-The agent inspects the code, asks you what it can't find out, writes
-`stackatlas.yaml`, and adds a rule to `AGENTS.md` (or `CLAUDE.md`) so the file
-is updated whenever the project's services change. Agents without web access
-can be given [the instructions](docs/agent-instructions.md) pasted in instead.
 
 ## The central atlas
 

@@ -6,7 +6,7 @@ it runs and what it depends on, for [stackatlas](https://github.com/PabloDinella
 and make sure it stays up to date.
 
 (People: ask your agent to follow this file. See the
-[README](../README.md#describing-a-repository) for the one-line prompt.)
+[README](../README.md#quick-start) for the one-line prompt.)
 
 ## Reference
 
