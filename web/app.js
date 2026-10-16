@@ -20,6 +20,9 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&l
 const fmtDate = (iso) => iso ? new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "unknown";
 const daysUntil = (iso) => iso ? Math.floor((new Date(iso) - Date.now()) / 86400e3) : null;
 const link = (url, text) => url ? `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(text ?? url.replace(/^https?:\/\//, ""))}</a>` : null;
+// TLDs that never exist on the internet (RFC 2606, RFC 6761 and friends): no point asking RDAP
+const RESERVED_TLDS = new Set(["example", "test", "invalid", "localhost", "local", "internal", "home", "lan"]);
+const pick = (obj, keys) => Object.fromEntries(keys.filter((k) => obj[k] != null).map((k) => [k, obj[k]]));
 const fullName = (p) => p.group ? `${p.group} · ${p.name}` : p.name;
 const slug = (s) => String(s).normalize("NFD").replace(/[^\w]+/g, "-").toLowerCase();
 // Graph ids must be plain: the layout engine misplaces nodes whose ids contain "." or "/"
@@ -129,6 +132,53 @@ const layout = {
   nodeLayoutOptions: (n) => n.isParent() ? { "elk.padding": "[top=40,left=16,bottom=16,right=16]" } : {},
 };
 
+// Domains and projects get ELK's layered layout. Services are placed by hand
+// afterwards, in as many columns as it takes to match the height of the rest:
+// left to ELK, dozens of services become one very long column.
+async function runLayout() {
+  const services = cy.nodes('[kind = "service"]');
+  const serviceSide = services.union(services.descendants());
+  const rest = cy.elements().not(serviceSide).not(serviceSide.connectedEdges());
+  await rest.layout(layout).run().promiseOn("layoutstop");
+
+  const GAP = 16;
+  for (const s of services) {
+    let y = 0;
+    for (const r of s.children()) {
+      r.position({ x: 0, y: y + r.outerHeight() / 2 });
+      y += r.outerHeight() + 8;
+    }
+  }
+
+  // Each service goes as close as possible to the projects that use it
+  const height = (rest.nonempty() ? rest.boundingBox().h : 0) || 400;
+  const center = (s) => {
+    const ys = resourcesOf(s).neighborhood('node[kind = "project"]').map((p) => p.position("y"));
+    return ys.length ? ys.reduce((a, b) => a + b) / ys.length : Infinity;
+  };
+  const ordered = services.toArray().map((s) => [s, center(s)]).sort((a, b) => a[1] - b[1]).map(([s]) => s);
+  const total = ordered.reduce((sum, s) => sum + s.boundingBox().h + GAP, 0);
+  const columns = Math.max(1, Math.ceil(total / Math.max(height, 300)));
+  const perColumn = Math.ceil(ordered.length / columns);
+
+  const top = rest.nonempty() ? rest.boundingBox().y1 : 0;
+  let x = rest.nonempty() ? rest.boundingBox().x2 + 90 : 0;
+  for (let c = 0; c < columns; c++) {
+    const column = ordered.slice(c * perColumn, (c + 1) * perColumn);
+    const columnHeight = column.reduce((sum, s) => sum + s.boundingBox().h + GAP, -GAP);
+    let y = top + Math.max(0, (height - columnHeight) / 2);
+    let width = 0;
+    for (const s of column) {
+      const bb = s.boundingBox();
+      if (s.isParent()) s.children().shift({ x: x - bb.x1, y: y - bb.y1 });
+      else s.position({ x: x + bb.w / 2, y: y + bb.h / 2 });
+      y += bb.h + GAP;
+      width = Math.max(width, bb.w);
+    }
+    x += width + 40;
+  }
+}
+
 // --- focus ----------------------------------------------------------------------
 
 const resourcesOf = (node) => node.data("kind") === "resource" ? node : node.descendants('node[kind = "resource"]');
@@ -229,7 +279,10 @@ async function refresh() {
   $("error").style.display = "none";
   try {
     atlas = await loadAtlas(source, ctx);
-    await Promise.all(Object.values(atlas.domains).map(async (d) => Object.assign(d, await lookupDomain(d.name), d.meta.registrar ? { registrar: d.meta.registrar } : {})));
+    await Promise.all(Object.values(atlas.domains).map(async (d) => {
+      const lookup = d.meta.lookup !== false && !RESERVED_TLDS.has(d.name.split(".").at(-1));
+      Object.assign(d, lookup ? await lookupDomain(d.name) : {}, pick(d.meta, ["registrar", "expires", "registered", "dns"]));
+    }));
     if (!atlas.files.length) throw new Error(atlas.warnings.map((w) => `${w.file}: ${w.message}`).join("\n"));
 
     document.title = $("title").textContent = atlas.title;
@@ -241,7 +294,7 @@ async function refresh() {
       $("cy").style.visibility = "hidden"; // nodes jump around until the layout settles
       cy = cytoscape({ container: $("cy"), elements, style: style(), minZoom: 0.2, maxZoom: 2.5, wheelSensitivity: 0.3 });
       cy.on("tap", (e) => e.target === cy ? clearFocus() : e.target.isNode() && focus(e.target));
-      await cy.layout(layout).run().promiseOn("layoutstop");
+      await runLayout();
       cy.fit(undefined, 30);
       $("cy").style.visibility = "";
       drawn = signature;

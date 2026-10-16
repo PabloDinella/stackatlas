@@ -1,46 +1,80 @@
 # yaml-language-server: $schema=../schema/stackatlas.schema.json
 #
-# An example atlas. This is the "central" file: it pulls in the stackatlas.yaml
-# of each repository and can also describe projects that have no repository.
-title: Jane's projects
+# Example: Sam, an indie developer with a handful of micro-SaaS products, a
+# side project, a freelance client and a product that was shut down.
+#
+# This is the central atlas. Each product describes itself in a stackatlas.yaml
+# in its own repository; this file pulls them in and adds what has no
+# repository of its own. All domains use the reserved .example TLD, so their
+# registrar and expiry are written by hand below instead of looked up.
+title: Sam's products
 
 include:
-  # In real life these point at repositories, e.g. github:jane/recipe-box
-  # or gitlab:choir/website. Relative paths work too:
-  - recipe-box/stackatlas.yaml
+  # In real life these would be repository references, for example:
+  #   - github:sam/pingwise
+  #   - gitlab:sam/receiptly
+  - pingwise/stackatlas.yaml
+  - receiptly/stackatlas.yaml
+  - linkpad/stackatlas.yaml
+  - formdrop/stackatlas.yaml
 
 projects:
-  # A project defined right here, with no repository of its own
-  - name: Choir website
-    owner: Community Choir
-    group: Choir
+  - name: Newsletter
+    owner: Own products
+    group: sam.example
     type: website
-    url: https://example.org
-    domains: [example.org]
+    url: https://sam.example
+    domains: [sam.example]
+    resources:
+      - github/pages
+      - use: resend/broadcasts
+        notes: weekly build-in-public newsletter
+
+  - name: Shared VPS
+    owner: Own products
+    group: Infrastructure
+    type: service
+    notes: One Hetzner box running Coolify. Hosts FormDrop and self-hosted tools.
     resources:
       - hetzner/vps
       - coolify/deploy
+      - use: betterstack/uptime
+        notes: pages me if the box goes down
+
+  - name: Website
+    owner: Northwind Bakery (client)
+    type: website
+    url: https://northwindbakery.example
+    notes: Freelance retainer, 2 hours a month of maintenance.
+    domains: [northwindbakery.example]
+    resources:
+      - netlify/hosting
+      - use: netlify/forms
+        notes: catering orders
       - cloudflare/dns
 
-  - name: Rehearsal reminders
-    owner: Community Choir
-    group: Choir
-    type: service
-    status: planned
-    resources:
-      - home-lab/server
+  - name: Tweet scheduler
+    owner: Own products
+    group: Tweetsched
+    type: app
+    status: archived
+    notes: Shut down after the API pricing change. Domain kept until it expires.
+    domains: [tweetsched.example]
 
 services:
-  # Services that are not in the built-in catalog can be declared here
-  home-lab:
-    name: Home lab
-    category: infrastructure
-    resources:
-      server: { name: Mini PC, notes: Runs everything self-hosted }
+  # The built-in catalog knows these; add the facts that are yours
+  stripe: { account: billing@sam.example, plan: Standard }
+  supabase: { account: sam@sam.example, plan: Pro }
+  fly-io: { account: sam@sam.example, plan: Pay as you go }
+  hetzner: { plan: CX32 }
 
 domains:
-  # Registrar and expiry come from RDAP automatically; add what RDAP can't know
-  example.org:
-    auto_renew: true
-    cost: 10
-    currency: USD
+  pingwise.example:        { registrar: Cloudflare Registrar, expires: 2027-09-03, auto_renew: true, cost: 14.20, currency: USD }
+  pingwise-status.example: { registrar: Cloudflare Registrar, expires: 2027-09-03, auto_renew: true, cost: 10.44, currency: USD }
+  receiptly.example:       { registrar: Porkbun, expires: 2028-02-11, auto_renew: true, cost: 12.50, currency: USD }
+  getreceiptly.example:    { registrar: Porkbun, expires: 2027-02-11, auto_renew: true, cost: 12.50, currency: USD, notes: Redirects to receiptly.example }
+  lnkpd.example:           { registrar: Cloudflare Registrar, expires: 2027-06-21, auto_renew: true, cost: 25.00, currency: USD }
+  formdrop.example:        { registrar: Namecheap, expires: 2027-04-30, auto_renew: true, cost: 13.98, currency: USD }
+  sam.example:             { registrar: Cloudflare Registrar, expires: 2029-01-15, auto_renew: true, cost: 10.44, currency: USD }
+  northwindbakery.example: { registrar: GoDaddy, expires: 2027-03-08, auto_renew: false, notes: Owned and paid by the client; remind them in February }
+  tweetsched.example:      { registrar: Namecheap, expires: 2027-01-19, auto_renew: false, cost: 13.98, currency: USD, notes: Let it expire }

@@ -1,0 +1,30 @@
+# yaml-language-server: $schema=../../schema/stackatlas.schema.json
+#
+# Receiptly: turns photos of receipts into expense reports.
+owner: Own products
+group: Receiptly
+
+projects:
+  - name: Web app
+    type: app
+    url: https://receiptly.example
+    domains: [receiptly.example, getreceiptly.example]
+    resources:
+      - vercel/hosting
+      - clerk/auth
+      - neon/postgres
+      - stripe/checkout
+      - postmark/transactional
+      - use: cloudflare/r2
+        notes: receipt photos and generated PDFs
+      - use: openai/api
+        notes: reads the receipts
+      - sentry/errors
+
+  - name: Mobile app
+    type: app
+    status: planned
+    resources:
+      - clerk/auth
+      - app-store/store
+      - google-play/store

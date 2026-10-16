@@ -2,10 +2,12 @@
 // files (in other repositories, on GitHub or GitLab), and merges everything
 // into one model of projects, domains, services and resources.
 
-import { load as parseYaml } from "./vendor/js-yaml.mjs";
+import { load, CORE_SCHEMA } from "./vendor/js-yaml.mjs";
 import { BUILTIN_SERVICES } from "./catalog.js";
 
 export const DEFAULT_FILE = "stackatlas.yaml";
+// YAML 1.2 core schema, like editors use: 2027-01-31 stays a string, not a Date
+export const parseYaml = (text) => load(text, { schema: CORE_SCHEMA });
 export const TYPES = ["website", "app", "api", "service", "library", "other"];
 export const STATUSES = ["active", "planned", "paused", "archived"];
 const MAX_DEPTH = 10;

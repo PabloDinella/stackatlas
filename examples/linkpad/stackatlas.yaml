@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=../../schema/stackatlas.schema.json
+#
+# Linkpad: a tiny link shortener, entirely on Cloudflare.
+owner: Own products
+group: Linkpad
+
+projects:
+  - name: Shortener
+    type: service
+    url: https://lnkpd.example
+    domains: [lnkpd.example]
+    resources:
+      - cloudflare/workers
+      - use: cloudflare/d1
+        notes: links and click counts
+      - cloudflare/kv
+      - cloudflare/dns
+      - lemon-squeezy/subscriptions

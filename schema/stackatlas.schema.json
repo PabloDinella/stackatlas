@@ -6,27 +6,44 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "title": { "type": "string", "description": "Shown as the page title. Only read from the root atlas." },
-    "owner": { "type": "string", "description": "Default owner (who the projects are for) of the projects in this file." },
-    "group": { "type": "string", "description": "Default group of the projects in this file, e.g. a product with a website and an app." },
+    "title": {
+      "type": "string",
+      "description": "Shown as the page title. Only read from the root atlas."
+    },
+    "owner": {
+      "type": "string",
+      "description": "Default owner (who the projects are for) of the projects in this file."
+    },
+    "group": {
+      "type": "string",
+      "description": "Default group of the projects in this file, e.g. a product with a website and an app."
+    },
     "include": {
       "type": "array",
       "description": "Other atlas files to read.",
-      "items": { "$ref": "#/$defs/include" }
+      "items": {
+        "$ref": "#/$defs/include"
+      }
     },
     "projects": {
       "type": "array",
-      "items": { "$ref": "#/$defs/project" }
+      "items": {
+        "$ref": "#/$defs/project"
+      }
     },
     "services": {
       "type": "object",
       "description": "Services to add to the built-in catalog, or to override. Keys are service ids, used as the first part of \"service/resource\".",
-      "additionalProperties": { "$ref": "#/$defs/service" }
+      "additionalProperties": {
+        "$ref": "#/$defs/service"
+      }
     },
     "domains": {
       "type": "object",
       "description": "Extra facts about domains, keyed by domain name. Registrar and expiry come from RDAP.",
-      "additionalProperties": { "$ref": "#/$defs/domain" }
+      "additionalProperties": {
+        "$ref": "#/$defs/domain"
+      }
     }
   },
   "$defs": {
@@ -40,59 +57,144 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["github"],
+          "required": [
+            "github"
+          ],
           "properties": {
-            "github": { "type": "string", "pattern": "^[^/]+/[^/]+$", "description": "owner/repo" },
-            "path": { "type": "string", "default": "stackatlas.yaml" },
-            "ref": { "type": "string", "description": "Branch, tag or commit. Defaults to the default branch." }
+            "github": {
+              "type": "string",
+              "pattern": "^[^/]+/[^/]+$",
+              "description": "owner/repo"
+            },
+            "path": {
+              "type": "string",
+              "default": "stackatlas.yaml"
+            },
+            "ref": {
+              "type": "string",
+              "description": "Branch, tag or commit. Defaults to the default branch."
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["gitlab"],
+          "required": [
+            "gitlab"
+          ],
           "properties": {
-            "gitlab": { "type": "string", "description": "Full project path, e.g. group/subgroup/project" },
-            "host": { "type": "string", "default": "gitlab.com", "description": "For self-hosted GitLab." },
-            "path": { "type": "string", "default": "stackatlas.yaml" },
-            "ref": { "type": "string" }
+            "gitlab": {
+              "type": "string",
+              "description": "Full project path, e.g. group/subgroup/project"
+            },
+            "host": {
+              "type": "string",
+              "default": "gitlab.com",
+              "description": "For self-hosted GitLab."
+            },
+            "path": {
+              "type": "string",
+              "default": "stackatlas.yaml"
+            },
+            "ref": {
+              "type": "string"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["url"],
-          "properties": { "url": { "type": "string", "format": "uri" } }
+          "required": [
+            "url"
+          ],
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri"
+            }
+          }
         }
       ]
     },
     "project": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name"],
+      "required": [
+        "name"
+      ],
       "properties": {
-        "name": { "type": "string" },
-        "owner": { "type": "string", "description": "Who the project is for: you, a client, an organization." },
-        "group": { "type": "string", "description": "Projects with the same group are drawn together, e.g. a product's website and app." },
-        "type": { "enum": ["website", "app", "api", "service", "library", "other"], "default": "other" },
-        "status": { "enum": ["active", "planned", "paused", "archived"], "default": "active" },
-        "url": { "type": "string", "format": "uri" },
-        "repo": { "type": "string", "format": "uri", "description": "Defaults to the repository of the stackatlas.yaml that defines the project." },
-        "notes": { "type": "string" },
-        "domains": { "type": "array", "items": { "type": "string" } },
+        "name": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string",
+          "description": "Who the project is for: you, a client, an organization."
+        },
+        "group": {
+          "type": "string",
+          "description": "Projects with the same group are drawn together, e.g. a product's website and app."
+        },
+        "type": {
+          "enum": [
+            "website",
+            "app",
+            "api",
+            "service",
+            "library",
+            "other"
+          ],
+          "default": "other"
+        },
+        "status": {
+          "enum": [
+            "active",
+            "planned",
+            "paused",
+            "archived"
+          ],
+          "default": "active"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "repo": {
+          "type": "string",
+          "format": "uri",
+          "description": "Defaults to the repository of the stackatlas.yaml that defines the project."
+        },
+        "notes": {
+          "type": "string"
+        },
+        "domains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "resources": {
           "type": "array",
           "description": "What the project uses, as \"service/resource\" (e.g. \"supabase/auth\").",
           "items": {
             "oneOf": [
-              { "type": "string", "pattern": "^[\\w-]+/[\\w-]+$" },
+              {
+                "type": "string",
+                "pattern": "^[\\w-]+/[\\w-]+$"
+              },
               {
                 "type": "object",
                 "additionalProperties": false,
-                "required": ["use"],
+                "required": [
+                  "use"
+                ],
                 "properties": {
-                  "use": { "type": "string", "pattern": "^[\\w-]+/[\\w-]+$" },
-                  "notes": { "type": "string" }
+                  "use": {
+                    "type": "string",
+                    "pattern": "^[\\w-]+/[\\w-]+$"
+                  },
+                  "notes": {
+                    "type": "string"
+                  }
                 }
               }
             ]
@@ -104,21 +206,59 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "name": { "type": "string" },
-        "category": { "enum": ["dns-cdn", "hosting", "backend", "storage", "infrastructure", "distribution", "other"] },
-        "url": { "type": "string", "format": "uri", "description": "Dashboard URL." },
-        "plan": { "type": "string" },
-        "account": { "type": "string", "description": "Which account or e-mail is used. Never put passwords here." },
-        "notes": { "type": "string" },
+        "name": {
+          "type": "string"
+        },
+        "category": {
+          "enum": [
+            "dns-cdn",
+            "hosting",
+            "backend",
+            "storage",
+            "infrastructure",
+            "distribution",
+            "payments",
+            "email",
+            "monitoring",
+            "analytics",
+            "ai",
+            "other"
+          ]
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Dashboard URL."
+        },
+        "plan": {
+          "type": "string"
+        },
+        "account": {
+          "type": "string",
+          "description": "Which account or e-mail is used. Never put passwords here."
+        },
+        "notes": {
+          "type": "string"
+        },
         "resources": {
           "type": "object",
           "additionalProperties": {
             "oneOf": [
-              { "type": "string", "description": "Display name" },
+              {
+                "type": "string",
+                "description": "Display name"
+              },
               {
                 "type": "object",
                 "additionalProperties": false,
-                "properties": { "name": { "type": "string" }, "notes": { "type": "string" } }
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "notes": {
+                    "type": "string"
+                  }
+                }
               }
             ]
           }
@@ -129,11 +269,42 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "auto_renew": { "type": "boolean" },
-        "cost": { "type": "number", "description": "Yearly cost." },
-        "currency": { "type": "string" },
-        "registrar": { "type": "string", "description": "Overrides the registrar found over RDAP." },
-        "notes": { "type": "string" }
+        "auto_renew": {
+          "type": "boolean"
+        },
+        "cost": {
+          "type": "number",
+          "description": "Yearly cost."
+        },
+        "currency": {
+          "type": "string"
+        },
+        "registrar": {
+          "type": "string",
+          "description": "Overrides the registrar found over RDAP."
+        },
+        "notes": {
+          "type": "string"
+        },
+        "expires": {
+          "type": "string",
+          "format": "date",
+          "description": "Expiry date (YYYY-MM-DD), for domains RDAP can't look up. Overrides RDAP."
+        },
+        "registered": {
+          "type": "string",
+          "format": "date",
+          "description": "Registration date (YYYY-MM-DD). Overrides RDAP."
+        },
+        "dns": {
+          "type": "string",
+          "description": "Who runs the DNS. Overrides the guess made from the nameservers."
+        },
+        "lookup": {
+          "type": "boolean",
+          "default": true,
+          "description": "Set to false to skip the RDAP lookup. Reserved TLDs such as .example, .test and .internal are never looked up."
+        }
       }
     }
   }

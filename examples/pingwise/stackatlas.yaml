@@ -1,0 +1,49 @@
+# yaml-language-server: $schema=../../schema/stackatlas.schema.json
+#
+# Pingwise: uptime monitoring with status pages. A monorepo, so one file
+# describes all of its parts.
+owner: Own products
+group: Pingwise
+
+projects:
+  - name: Landing page
+    type: website
+    url: https://pingwise.example
+    domains: [pingwise.example]
+    resources:
+      - cloudflare/pages
+      - cloudflare/dns
+      - plausible/analytics
+
+  - name: Dashboard
+    type: app
+    url: https://app.pingwise.example
+    resources:
+      - fly-io/apps
+      - supabase/auth
+      - supabase/database
+      - stripe/billing
+      - use: resend/transactional
+        notes: alert e-mails
+      - sentry/errors
+      - posthog/analytics
+
+  - name: Check runners
+    type: service
+    notes: Run the checks from six regions.
+    resources:
+      - use: fly-io/apps
+        notes: one machine per region
+      - use: upstash/qstash
+        notes: schedules the checks
+      - upstash/redis
+      - sentry/errors
+
+  - name: Status pages
+    type: service
+    notes: Customers' public status pages, on their own subdomains.
+    domains: [pingwise-status.example]
+    resources:
+      - cloudflare/workers
+      - cloudflare/kv
+      - cloudflare/dns

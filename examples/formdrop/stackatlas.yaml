@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=../../schema/stackatlas.schema.json
+#
+# FormDrop: a form backend for static sites. Development is paused, but it
+# keeps running for its paying customers.
+owner: Own products
+group: FormDrop
+
+projects:
+  - name: App
+    type: app
+    status: paused
+    url: https://formdrop.example
+    domains: [formdrop.example]
+    resources:
+      - use: hetzner/vps
+        notes: on the shared VPS
+      - coolify/deploy
+      - resend/transactional
+      - paddle/billing
+      - use: anthropic/api
+        notes: spam filtering

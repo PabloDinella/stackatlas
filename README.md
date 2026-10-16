@@ -5,7 +5,12 @@ services (and which parts of each service) they use.
 
 Each repository describes itself in a small `stackatlas.yaml`. A central atlas
 file pulls those together — from GitHub, GitLab, or anywhere on the web — and
-stackatlas draws the whole picture as an interactive graph:
+stackatlas draws the whole picture as an interactive graph.
+
+**[▶ See a live example](https://pablodinella.github.io/stackatlas/?atlas=github:PabloDinella/stackatlas/examples/atlas.yaml)**: an indie developer with four micro-SaaS
+products, a newsletter, a shared VPS, a freelance client and a retired product.
+Its files are in [`examples/`](examples).
+
 
 - **Click anything to focus on it.** A domain shows the project behind it and
   what that project uses; a service shows every project that depends on it.
@@ -20,11 +25,9 @@ stackatlas draws the whole picture as an interactive graph:
 
 ## Quick start
 
-Open a public atlas in the hosted viewer, no install needed:
-
-```
-https://pablodinella.github.io/stackatlas/?atlas=github:PabloDinella/stackatlas/examples/atlas.yaml
-```
+Open any public atlas in the [hosted viewer](https://pablodinella.github.io/stackatlas/),
+no install needed: paste its address, or link to it with `?atlas=`, like the
+[example](https://pablodinella.github.io/stackatlas/?atlas=github:PabloDinella/stackatlas/examples/atlas.yaml).
 
 Or run it yourself:
 
@@ -40,26 +43,27 @@ Add a `stackatlas.yaml` at the root of a repository:
 
 ```yaml
 # yaml-language-server: $schema=https://raw.githubusercontent.com/PabloDinella/stackatlas/main/schema/stackatlas.schema.json
-owner: Jane              # who the projects are for
-group: Recipe Box        # projects in a group are drawn together
+owner: Own products      # who the projects are for
+group: Receiptly         # projects in a group are drawn together
 
 projects:
-  - name: Website
-    type: website        # website | app | api | service | library | other
-    url: https://example.com
-    domains: [example.com]
+  - name: Web app
+    type: app            # website | app | api | service | library | other
+    url: https://receiptly.example
+    domains: [receiptly.example]
     resources:
       - vercel/hosting
-      - supabase/auth
-      - supabase/database
+      - clerk/auth
+      - neon/postgres
+      - stripe/checkout
       - use: cloudflare/r2
-        notes: recipe photos
+        notes: receipt photos and generated PDFs
 
-  - name: App
+  - name: Mobile app
     type: app
     status: planned      # active | planned | paused | archived
     resources:
-      - firebase/messaging
+      - app-store/store
       - google-play/store
 ```
 
@@ -73,25 +77,26 @@ The atlas you open is just another file of the same format, usually with
 `include:` entries pointing at repositories:
 
 ```yaml
-title: Jane's projects
+title: Sam's products
 
 include:
-  - github:jane/recipe-box                     # reads stackatlas.yaml at the root
-  - github:jane/monorepo/apps/web/stackatlas.yaml@main
-  - gitlab:choir/website                       # gitlab.com
+  - github:sam/receiptly                       # reads stackatlas.yaml at the root
+  - github:sam/monorepo/apps/web/stackatlas.yaml@main
+  - gitlab:sam/pingwise                        # gitlab.com
   - { gitlab: team/site, host: git.example.com, path: docs/stackatlas.yaml }
   - https://example.com/some/stackatlas.yaml
   - other-file.yaml                            # relative to this file
 
 projects:
   # Projects without a repository of their own can live right here
-  - name: Choir website
-    owner: Community Choir
-    domains: [example.org]
-    resources: [hetzner/vps, coolify/deploy, cloudflare/dns]
+  - name: Website
+    owner: Northwind Bakery (client)
+    domains: [northwindbakery.example]
+    resources: [netlify/hosting, cloudflare/dns]
 
 services:
-  # Add services the built-in catalog doesn't know, or override its entries
+  # Add facts about built-in services, or declare services it doesn't know
+  stripe: { account: billing@example.com, plan: Standard }
   home-lab:
     name: Home lab
     category: infrastructure
@@ -100,20 +105,29 @@ services:
 
 domains:
   # Facts RDAP can't know
-  example.org: { auto_renew: true, cost: 10, currency: USD }
+  northwindbakery.example: { auto_renew: false, cost: 12, currency: USD, notes: Paid by the client }
 ```
 
 Includes can nest. Files that fail to load, unknown resources and other
 problems show up under **Warnings** instead of breaking the map.
+
+Registrar, expiry and DNS provider are looked up over RDAP. Anything under
+`domains:` (`registrar`, `expires`, `registered`, `dns`) overrides the lookup,
+and `lookup: false` skips it. Reserved TLDs such as `.example`, `.test` or
+`.internal` are never looked up.
 
 See [`examples/`](examples) for a complete example and
 [`schema/stackatlas.schema.json`](schema/stackatlas.schema.json) for every field.
 
 ### Built-in services
 
-`cloudflare`, `supabase`, `firebase`, `vercel`, `netlify`, `github`, `gitlab`,
-`aws`, `hetzner`, `digitalocean`, `coolify`, `fly-io`, `render`, `google-play`
-and `app-store`, each with their main resources. See
+Hosting and infrastructure: `cloudflare`, `vercel`, `netlify`, `github`,
+`gitlab`, `aws`, `hetzner`, `digitalocean`, `coolify`, `fly-io`, `render`,
+`railway`. Backend: `supabase`, `firebase`, `neon`, `upstash`, `clerk`.
+Payments: `stripe`, `lemon-squeezy`, `paddle`. Email: `resend`, `postmark`.
+Monitoring and analytics: `sentry`, `betterstack`, `plausible`, `posthog`.
+AI: `openai`, `anthropic`. Distribution: `google-play`, `app-store`. Each comes
+with its main resources. See
 [`web/catalog.js`](web/catalog.js) for the ids, and send a pull request to add
 more.
 
@@ -162,6 +176,17 @@ includes, queries RDAP and draws the graph with
 That is why it can be hosted on GitHub Pages for public atlases. The Go server
 ([`main.go`](main.go)) embeds the viewer and adds three things: the atlas to
 open, serving a local atlas directory, and the token-adding proxy.
+
+### Validating in CI
+
+To check a `stackatlas.yaml` in a pull request, validate it against
+[the schema](schema/stackatlas.schema.json). Read the YAML with the YAML 1.2
+core schema, so dates stay strings, as [`scripts/validate.mjs`](scripts/validate.mjs)
+does:
+
+```bash
+npm install --no-save ajv@8 ajv-formats@3 && node scripts/validate.mjs path/to/files
+```
 
 ## Development
 

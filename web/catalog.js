@@ -9,6 +9,11 @@ export const CATEGORIES = {
   storage: "Storage",
   infrastructure: "Infrastructure",
   distribution: "Distribution",
+  payments: "Payments",
+  email: "Email",
+  monitoring: "Monitoring",
+  analytics: "Analytics",
+  ai: "AI",
   other: "Other",
 };
 
@@ -77,6 +82,66 @@ export const BUILTIN_SERVICES = {
   render: {
     name: "Render", category: "hosting", url: "https://dashboard.render.com",
     resources: { web: { name: "Web service" }, database: { name: "Postgres" } },
+  },
+  railway: {
+    name: "Railway", category: "hosting", url: "https://railway.com/dashboard",
+    resources: { service: { name: "Service" }, database: { name: "Database" } },
+  },
+  neon: {
+    name: "Neon", category: "backend", url: "https://console.neon.tech",
+    resources: { postgres: { name: "Postgres" } },
+  },
+  upstash: {
+    name: "Upstash", category: "backend", url: "https://console.upstash.com",
+    resources: { redis: { name: "Redis" }, qstash: { name: "QStash" }, vector: { name: "Vector" } },
+  },
+  clerk: {
+    name: "Clerk", category: "backend", url: "https://dashboard.clerk.com",
+    resources: { auth: { name: "Auth" } },
+  },
+  stripe: {
+    name: "Stripe", category: "payments", url: "https://dashboard.stripe.com",
+    resources: { billing: { name: "Billing" }, checkout: { name: "Checkout" }, connect: { name: "Connect" } },
+  },
+  "lemon-squeezy": {
+    name: "Lemon Squeezy", category: "payments", url: "https://app.lemonsqueezy.com",
+    resources: { checkout: { name: "Checkout" }, subscriptions: { name: "Subscriptions" } },
+  },
+  paddle: {
+    name: "Paddle", category: "payments", url: "https://vendors.paddle.com",
+    resources: { billing: { name: "Billing" } },
+  },
+  resend: {
+    name: "Resend", category: "email", url: "https://resend.com/overview",
+    resources: { transactional: { name: "Transactional" }, broadcasts: { name: "Broadcasts" } },
+  },
+  postmark: {
+    name: "Postmark", category: "email", url: "https://account.postmarkapp.com",
+    resources: { transactional: { name: "Transactional" }, inbound: { name: "Inbound" } },
+  },
+  sentry: {
+    name: "Sentry", category: "monitoring", url: "https://sentry.io",
+    resources: { errors: { name: "Errors" }, performance: { name: "Performance" } },
+  },
+  betterstack: {
+    name: "Better Stack", category: "monitoring", url: "https://betterstack.com",
+    resources: { uptime: { name: "Uptime" }, logs: { name: "Logs" }, status: { name: "Status page" } },
+  },
+  plausible: {
+    name: "Plausible", category: "analytics", url: "https://plausible.io/sites",
+    resources: { analytics: { name: "Analytics" } },
+  },
+  posthog: {
+    name: "PostHog", category: "analytics", url: "https://app.posthog.com",
+    resources: { analytics: { name: "Product analytics" }, flags: { name: "Feature flags" }, replay: { name: "Session replay" } },
+  },
+  openai: {
+    name: "OpenAI", category: "ai", url: "https://platform.openai.com",
+    resources: { api: { name: "API" } },
+  },
+  anthropic: {
+    name: "Anthropic", category: "ai", url: "https://console.anthropic.com",
+    resources: { api: { name: "Claude API" } },
   },
   "google-play": {
     name: "Google Play", category: "distribution", url: "https://play.google.com/console",
