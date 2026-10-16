@@ -1,21 +1,12 @@
-# Let an AI agent write your stackatlas.yaml
+# Set up stackatlas in a repository
 
-Paste the prompt below into a coding agent (Claude Code, Codex, Cursor,
-Copilot, …) running in the repository you want to describe. It will:
+These are instructions for an AI coding agent working in a repository. Your
+task: create a `stackatlas.yaml` at the root of the repository, describing what
+it runs and what it depends on, for [stackatlas](https://github.com/PabloDinella/stackatlas),
+and make sure it stays up to date.
 
-1. look through the repository to find what it runs and what it depends on;
-2. write a `stackatlas.yaml` at the root, asking you only what it can't find out;
-3. add an instruction to `AGENTS.md` (or `CLAUDE.md`) so that future changes
-   to services, hosting or domains update `stackatlas.yaml` in the same change.
-
-Review the result before committing it, as you would any other change.
-
-## The prompt
-
-````markdown
-Create a `stackatlas.yaml` at the root of this repository, describing what it
-runs and what it depends on, for stackatlas (https://github.com/PabloDinella/stackatlas).
-Then make sure it stays up to date.
+(People: ask your agent to follow this file. See the
+[README](../README.md#describing-a-repository) for the one-line prompt.)
 
 ## Reference
 
@@ -55,12 +46,12 @@ Work out:
   when its role isn't obvious (for example, "receipt photos" on a storage
   bucket).
 
-## 2. Ask me what you can't find out
+## 2. Ask the user what you can't find out
 
-Before writing the file, ask me in one go, and only about what the code
+Before writing the file, ask the user in one go, and only about what the code
 doesn't tell you:
 
-- `owner`: who the projects are for (me, a client, an organization);
+- `owner`: who the projects are for (the user, a client, an organization);
 - `group`: the product name that groups the projects, if there is one;
 - domains, URLs or statuses you couldn't determine;
 - anything you inferred but aren't sure about.
@@ -97,8 +88,8 @@ deployable part of this repository, update `stackatlas.yaml` to match.
 
 ## 5. Report back
 
-Show me the final `stackatlas.yaml`, list what you inferred and how sure you
-are, and tell me which instructions file you changed.
+Show the user the final `stackatlas.yaml`, list what you inferred and how sure you
+are, and say which instructions file you changed.
 
 ## Example
 
@@ -136,4 +127,3 @@ services:
     resources:
       campaigns: Campaigns
 ```
-````
