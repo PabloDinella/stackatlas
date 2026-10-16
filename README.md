@@ -119,6 +119,49 @@ and `lookup: false` skips it. Reserved TLDs such as `.example`, `.test` or
 See [`examples/`](examples) for a complete example and
 [`schema/stackatlas.schema.json`](schema/stackatlas.schema.json) for every field.
 
+### Services and resources
+
+Projects list what they use as `service/resource`. A service doesn't have to
+be in the built-in catalog: any file — a repository's own `stackatlas.yaml`
+or the central atlas — can declare one under `services:`.
+
+```yaml
+projects:
+  - name: Web app
+    resources:
+      - mailcoach/campaigns
+      - home-lab/server
+      - cloudflare/queues
+
+services:
+  mailcoach:                       # a service the catalog doesn't know
+    name: Mailcoach
+    category: email                # see the schema for the categories
+    url: https://app.mailcoach.app
+    resources:
+      campaigns: Campaigns         # short form: just the display name
+  home-lab:
+    name: Home lab
+    category: infrastructure
+    resources:
+      server: { name: Mini PC, notes: Proxmox }
+  cloudflare:                      # extend a built-in service
+    resources:
+      queues: Queues
+```
+
+- **Declarations are atlas-wide.** A service declared in one file can be used
+  by projects in any other file, so shared things (a home-lab server, a
+  company account) are best declared once, in the central atlas.
+- **Declarations merge.** Declaring a built-in service adds to it: new
+  resources join the catalog's, and fields such as `plan` or `account` are
+  filled in. When two files set the same field, the central atlas wins; between
+  included files, the one listed first in `include:` wins. The same goes for
+  `domains:`.
+- **Undeclared references still show up**, with a warning. `mailcoach/campaigns`
+  without a declaration is drawn as a service named "mailcoach"; the warning
+  is there to catch typos such as `supabse/auth`.
+
 ### Built-in services
 
 Hosting and infrastructure: `cloudflare`, `vercel`, `netlify`, `github`,

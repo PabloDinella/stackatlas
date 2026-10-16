@@ -162,7 +162,9 @@ function mergeServices(files, warnings) {
     services[id] = { ...s, id, builtin: true, resources: Object.fromEntries(
       Object.entries(s.resources ?? {}).map(([rid, r]) => [rid, { ...r, id: rid }])) };
   }
-  for (const { source, doc } of files) {
+  // Applied in reverse so that the central atlas has the last word, and among
+  // included files the one included first
+  for (const { source, doc } of [...files].reverse()) {
     for (const [id, s] of Object.entries(doc.services ?? {})) {
       if (!s || typeof s !== "object") {
         warnings.push({ file: source.label, url: source.fileUrl, message: `service "${id}" must be a mapping` });
@@ -188,12 +190,14 @@ function merge(files, warnings) {
 
   const domain = (name) => domains[name] ??= { name, projects: [], meta: {} };
 
-  for (const { source, doc } of files) {
-    const warn = (message) => warnings.push({ file: source.label, url: source.fileUrl, message });
-
+  for (const { doc } of [...files].reverse()) { // same precedence as services
     for (const [name, meta] of Object.entries(doc.domains ?? {})) {
       Object.assign(domain(name.toLowerCase()).meta, meta ?? {});
     }
+  }
+
+  for (const { source, doc } of files) {
+    const warn = (message) => warnings.push({ file: source.label, url: source.fileUrl, message });
 
     for (const [i, raw] of asArray(doc.projects).entries()) {
       if (!raw || typeof raw !== "object" || !raw.name) {
@@ -246,7 +250,7 @@ function merge(files, warnings) {
         }
         const resources = services[serviceId].resources;
         if (!resources[resourceId]) {
-          warn(`project "${p.name}": "${serviceId}" has no resource "${resourceId}"; declare it under services.${serviceId}.resources`);
+          if (!services[serviceId].unknown) warn(`project "${p.name}": "${serviceId}" has no resource "${resourceId}"; declare it under services.${serviceId}.resources`);
           resources[resourceId] = { id: resourceId, name: resourceId, unknown: true };
         }
         p.resources.push({ key: `${serviceId}/${resourceId}`, service: serviceId, resource: resourceId, notes: r?.notes ?? null });
