@@ -71,6 +71,11 @@ projects:
 override them. The first line lets editors with the YAML language server (e.g.
 VS Code's YAML extension) autocomplete and check the file.
 
+**Let an AI agent write it.** Paste [this prompt](docs/agent-prompt.md) into
+Claude Code, Codex, Cursor or another coding agent in your repository. It
+inspects the code, writes `stackatlas.yaml`, and adds a rule to `AGENTS.md` (or
+`CLAUDE.md`) so the file is updated whenever the project's services change.
+
 ## The central atlas
 
 The atlas you open is just another file of the same format, usually with
