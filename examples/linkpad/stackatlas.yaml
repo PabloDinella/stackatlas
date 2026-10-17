@@ -1,6 +1,7 @@
 # yaml-language-server: $schema=../../schema/stackatlas.schema.json
 #
 # Linkpad: a tiny link shortener, entirely on Cloudflare.
+atlas: ../atlas.yaml   # where this file is included from
 owner: Own products
 group: Linkpad
 

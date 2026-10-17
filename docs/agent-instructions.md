@@ -54,6 +54,8 @@ doesn't tell you:
 - `owner`: who the projects are for (the user, a client, an organization);
 - `group`: the product name that groups the projects, if there is one;
 - domains, URLs or statuses you couldn't determine;
+- whether a central atlas includes this repository; if so, add its reference
+  as `atlas:` (optional; e.g. `atlas: github:user/my-atlas/atlas.yaml`);
 - anything you inferred but aren't sure about.
 
 ## 3. Write `stackatlas.yaml`

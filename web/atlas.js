@@ -152,11 +152,76 @@ export async function loadAtlas(rootRef, ctx = {}) {
   return merge(files, warnings);
 }
 
+// --- reading files tolerantly ------------------------------------------------------
+// There is no version number in atlas files. Instead, the format only grows:
+// fields are added, never removed or redefined, and this reader is forgiving.
+// Unknown fields are ignored (with a warning, in case they are typos), x-…
+// fields are kept for the user, and old or common alternative names are read
+// as the current ones.
+
+const FIELDS = {
+  file: ["title", "atlas", "owner", "group", "include", "projects", "services", "domains"],
+  project: ["name", "owner", "group", "type", "status", "url", "repo", "notes", "domains", "resources"],
+  service: ["name", "category", "url", "plan", "account", "notes", "resources"],
+  resource: ["name", "notes"],
+  use: ["use", "notes"],
+  domain: ["registrar", "expires", "registered", "dns", "lookup", "auto_renew", "cost", "currency", "notes"],
+};
+
+const FIELD_ALIASES = {
+  file: {},
+  project: { repository: "repo", description: "notes", domain: "domains", uses: "resources", services: "resources" },
+  service: { dashboard: "url" },
+  resource: { description: "notes" },
+  use: { resource: "use", description: "notes" },
+  domain: { autorenew: "auto_renew", auto_renewal: "auto_renew", expiry: "expires", expiration: "expires", description: "notes" },
+};
+
+// Service ids people are likely to write, mapped to the catalog's
+const SERVICE_ALIASES = {
+  fly: "fly-io", flyio: "fly-io", lemonsqueezy: "lemon-squeezy", googleplay: "google-play", "play-store": "google-play",
+  appstore: "app-store", "better-stack": "betterstack", "digital-ocean": "digitalocean", cf: "cloudflare",
+};
+
+/** Returns the known fields of `obj` under their current names, plus its x-… fields as `extra`. */
+function read(obj, kind, what, warn) {
+  const out = {};
+  const extra = {};
+  const aliases = FIELD_ALIASES[kind];
+  // Current names first, so they win over an alias given alongside them
+  const entries = Object.entries(obj).sort(([a], [b]) => (a in aliases) - (b in aliases));
+  for (const [key, value] of entries) {
+    if (key.startsWith("x-")) {
+      extra[key.slice(2)] = value;
+      continue;
+    }
+    const name = aliases[key] ?? key;
+    if (!FIELDS[kind].includes(name)) {
+      warn(`${what}: unknown field "${key}" ignored (a newer stackatlas may know it)`);
+      continue;
+    }
+    if (name in out) continue;
+    if (name !== key) warn(`${what}: read "${key}" as "${name}"`);
+    out[name] = value;
+  }
+  if (Object.keys(extra).length) out.extra = extra;
+  return out;
+}
+
+const isMapping = (v) => v != null && typeof v === "object" && !Array.isArray(v);
+
 // --- merging --------------------------------------------------------------------
 
-const slug = (s) => String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^\w]+/g, "-").replace(/^-|-$/g, "").toLowerCase();
+const slug = (s) => String(s).normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w]+/g, "-").replace(/^-|-$/g, "").toLowerCase();
 
-function mergeServices(files, warnings) {
+function serviceId(id, warn, what) {
+  const canonical = SERVICE_ALIASES[id];
+  if (!canonical) return id;
+  warn(`${what}: read service "${id}" as "${canonical}"`);
+  return canonical;
+}
+
+function mergeServices(files) {
   const services = {};
   for (const [id, s] of Object.entries(BUILTIN_SERVICES)) {
     services[id] = { ...s, id, builtin: true, resources: Object.fromEntries(
@@ -164,16 +229,23 @@ function mergeServices(files, warnings) {
   }
   // Applied in reverse so that the central atlas has the last word, and among
   // included files the one included first
-  for (const { source, doc } of [...files].reverse()) {
-    for (const [id, s] of Object.entries(doc.services ?? {})) {
-      if (!s || typeof s !== "object") {
-        warnings.push({ file: source.label, url: source.fileUrl, message: `service "${id}" must be a mapping` });
+  for (const { doc, warn } of [...files].reverse()) {
+    if (!isMapping(doc.services ?? {})) {
+      warn("services: must be a mapping of service ids");
+      continue;
+    }
+    for (const [rawId, raw] of Object.entries(doc.services ?? {})) {
+      const id = serviceId(rawId, warn, `services.${rawId}`);
+      if (!isMapping(raw)) {
+        warn(`service "${rawId}" must be a mapping`);
         continue;
       }
+      const s = read(raw, "service", `service "${rawId}"`, warn);
       const base = services[id] ?? { id, name: id, resources: {} };
       const resources = { ...base.resources };
-      for (const [rid, r] of Object.entries(s.resources ?? {})) {
-        resources[rid] = { ...resources[rid], id: rid, name: rid, ...(typeof r === "string" ? { name: r } : r), declared: true };
+      for (const [rid, r] of Object.entries(isMapping(s.resources) ? s.resources : {})) {
+        const fields = typeof r === "string" ? { name: r } : isMapping(r) ? read(r, "resource", `resource "${rawId}/${rid}"`, warn) : {};
+        resources[rid] = { ...resources[rid], id: rid, name: rid, ...fields, declared: true };
       }
       services[id] = { ...base, ...s, id, resources, declared: true };
     }
@@ -182,28 +254,34 @@ function mergeServices(files, warnings) {
 }
 
 function merge(files, warnings) {
-  const root = files.find((f) => f.depth === 0)?.doc ?? {};
-  const services = mergeServices(files, warnings);
+  for (const f of files) {
+    f.warn = (message) => warnings.push({ file: f.source.label, url: f.source.fileUrl, message });
+    f.doc = read(f.doc, "file", "file", f.warn);
+  }
+  const rootFile = files.find((f) => f.depth === 0);
+  const root = rootFile?.doc ?? {};
+  const services = mergeServices(files);
   const domains = {};
   const projects = [];
   const ids = new Set();
 
   const domain = (name) => domains[name] ??= { name, projects: [], meta: {} };
 
-  for (const { doc } of [...files].reverse()) { // same precedence as services
-    for (const [name, meta] of Object.entries(doc.domains ?? {})) {
-      Object.assign(domain(name.toLowerCase()).meta, meta ?? {});
+  for (const { doc, warn } of [...files].reverse()) { // same precedence as services
+    for (const [name, meta] of Object.entries(isMapping(doc.domains) ? doc.domains : {})) {
+      const fields = isMapping(meta) ? read(meta, "domain", `domain "${name}"`, warn) : {};
+      const d = domain(name.toLowerCase());
+      d.meta = { ...d.meta, ...fields, extra: { ...d.meta.extra, ...fields.extra } };
     }
   }
 
-  for (const { source, doc } of files) {
-    const warn = (message) => warnings.push({ file: source.label, url: source.fileUrl, message });
-
-    for (const [i, raw] of asArray(doc.projects).entries()) {
-      if (!raw || typeof raw !== "object" || !raw.name) {
+  for (const { source, doc, warn } of files) {
+    for (const [i, item] of asArray(doc.projects).entries()) {
+      if (!isMapping(item) || !item.name) {
         warn(`project #${i + 1} has no name`);
         continue;
       }
+      const raw = read(item, "project", `project "${item.name}"`, warn);
       const p = {
         name: String(raw.name),
         group: raw.group ?? doc.group ?? null,
@@ -214,6 +292,7 @@ function merge(files, warnings) {
         // A repository's own stackatlas.yaml describes that repository
         repo: raw.repo ?? (source.repoUrl && source.path?.split("/").at(-1) === DEFAULT_FILE ? source.repoUrl : null),
         notes: raw.notes ?? null,
+        extra: raw.extra ?? {},
         source,
         domains: [],
         resources: [],
@@ -238,26 +317,33 @@ function merge(files, warnings) {
       }
 
       for (const r of asArray(raw.resources)) {
-        const use = typeof r === "string" ? r : r?.use;
-        const [serviceId, resourceId] = String(use ?? "").split("/");
-        if (!serviceId || !resourceId) {
-          warn(`project "${p.name}": resource "${use}" should look like "service/resource", e.g. "supabase/auth"`);
+        const use = isMapping(r) ? read(r, "use", `project "${p.name}"`, warn) : { use: r };
+        const [rawService, resourceId] = String(use.use ?? "").split("/");
+        if (!rawService || !resourceId) {
+          warn(`project "${p.name}": resource "${use.use}" should look like "service/resource", e.g. "supabase/auth"`);
           continue;
         }
-        if (!services[serviceId]) {
-          warn(`project "${p.name}": unknown service "${serviceId}"; declare it under services:`);
-          services[serviceId] = { id: serviceId, name: serviceId, resources: {}, unknown: true };
+        const sid = serviceId(rawService, warn, `project "${p.name}"`);
+        if (!services[sid]) {
+          warn(`project "${p.name}": unknown service "${sid}"; declare it under services:`);
+          services[sid] = { id: sid, name: sid, resources: {}, unknown: true };
         }
-        const resources = services[serviceId].resources;
+        const resources = services[sid].resources;
         if (!resources[resourceId]) {
-          if (!services[serviceId].unknown) warn(`project "${p.name}": "${serviceId}" has no resource "${resourceId}"; declare it under services.${serviceId}.resources`);
+          if (!services[sid].unknown) warn(`project "${p.name}": "${sid}" has no resource "${resourceId}"; declare it under services.${sid}.resources`);
           resources[resourceId] = { id: resourceId, name: resourceId, unknown: true };
         }
-        p.resources.push({ key: `${serviceId}/${resourceId}`, service: serviceId, resource: resourceId, notes: r?.notes ?? null });
+        p.resources.push({ key: `${sid}/${resourceId}`, service: sid, resource: resourceId, notes: use.notes ?? null });
       }
       projects.push(p);
     }
   }
 
-  return { title: root.title ?? "Stack atlas", files, projects, domains, services, warnings };
+  // A file opened on its own can say which atlas it belongs to
+  const partOf = [];
+  for (const ref of asArray(root.atlas)) {
+    try { partOf.push(parseRef(ref, rootFile.source).label); } catch (e) { rootFile.warn(`atlas: ${e.message}`); }
+  }
+
+  return { title: root.title ?? "Stack atlas", files, projects, domains, services, warnings, partOf };
 }

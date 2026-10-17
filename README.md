@@ -78,6 +78,21 @@ projects:
 override them. The first line lets editors with the YAML language server (e.g.
 VS Code's YAML extension) autocomplete and check the file.
 
+A repository's file works on its own: open it in the viewer to see just that
+repository. To find the bigger picture from there, it can point back to the
+atlas that includes it:
+
+```yaml
+atlas: github:you/your-atlas/atlas.yaml   # optional; a list is fine too
+```
+
+The viewer then shows a link to it. If that atlas is private, people without
+access see the link but can't open it, and a public repository pointing to it
+reveals the private atlas's name.
+
+Fields starting with `x-` are yours (`x-mrr: 1,840 USD`, `x-team: growth`):
+stackatlas never interprets them and shows them in the details panel.
+
 ## The central atlas
 
 The atlas you open is just another file of the same format, usually with
@@ -181,6 +196,23 @@ with its main resources. See
 [`web/catalog.js`](web/catalog.js) for the ids, and send a pull request to add
 more.
 
+## Compatibility
+
+Atlas files have no version number, and don't need one: the format only grows.
+
+- **Fields are only ever added**, always optional, and never removed or given
+  a new meaning. A file written today stays valid.
+- **The viewer reads what it can.** Fields it doesn't know are ignored (with a
+  warning, in case they are typos), so an older stackatlas reading a newer
+  file still draws everything it understands.
+- **Renames keep the old name working.** Older or common alternative names are
+  read as the current ones, with a gentle warning: `repository` as `repo`,
+  `description` as `notes`, `fly/apps` as `fly-io/apps`, and so on. Service
+  and resource ids in the catalog never change.
+- **The schema URL always describes the latest format**, so editors and CI
+  check against it. Your own data goes in `x-` fields, which the schema
+  always accepts.
+
 ## Self-hosting
 
 Run stackatlas on your own machine (a home lab, say) to read **private**
@@ -243,6 +275,7 @@ npm install --no-save ajv@8 ajv-formats@3 && node scripts/validate.mjs path/to/f
 ```bash
 go run . -web web examples    # serves web/ from disk: edit and reload
 go test ./...
+node --test test/*.test.mjs   # the viewer's atlas loading
 ```
 
 ## License

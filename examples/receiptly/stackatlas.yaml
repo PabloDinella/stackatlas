@@ -1,6 +1,7 @@
 # yaml-language-server: $schema=../../schema/stackatlas.schema.json
 #
 # Receiptly: turns photos of receipts into expense reports.
+atlas: ../atlas.yaml   # where this file is included from
 owner: Own products
 group: Receiptly
 
@@ -9,6 +10,7 @@ projects:
     type: app
     url: https://receiptly.example
     domains: [receiptly.example, getreceiptly.example]
+    x-mrr: 1,840 USD          # x-… fields are yours: shown, never interpreted
     resources:
       - vercel/hosting
       - clerk/auth

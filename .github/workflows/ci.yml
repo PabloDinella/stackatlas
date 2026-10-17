@@ -19,6 +19,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - run: node --test test/*.test.mjs
       - name: Validate the examples against the schema
         run: |
           npm install --no-save --no-package-lock ajv@8.17.1 ajv-formats@3.0.1

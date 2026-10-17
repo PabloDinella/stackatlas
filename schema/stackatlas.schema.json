@@ -2,13 +2,27 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/PabloDinella/stackatlas/main/schema/stackatlas.schema.json",
   "title": "stackatlas file",
-  "description": "An atlas file: a repository's stackatlas.yaml, or a central atlas that includes others.",
+  "description": "An atlas file: a repository's stackatlas.yaml, or a central atlas that includes others. The format only grows: fields are added, never removed or redefined, so there is no version number.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
     "title": {
       "type": "string",
       "description": "Shown as the page title. Only read from the root atlas."
+    },
+    "atlas": {
+      "description": "Optional. The central atlas (or atlases) this file is included from, so it can be found from here. Same syntax as include. If the atlas is private, people without access will only see the link.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/include"
+        },
+        {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/include"
+          }
+        }
+      ]
     },
     "owner": {
       "type": "string",
@@ -195,10 +209,20 @@
                   "notes": {
                     "type": "string"
                   }
+                },
+                "patternProperties": {
+                  "^x-": {
+                    "description": "Your own data. Ignored by stackatlas, shown in the details panel."
+                  }
                 }
               }
             ]
           }
+        }
+      },
+      "patternProperties": {
+        "^x-": {
+          "description": "Your own data. Ignored by stackatlas, shown in the details panel."
         }
       }
     },
@@ -258,10 +282,20 @@
                   "notes": {
                     "type": "string"
                   }
+                },
+                "patternProperties": {
+                  "^x-": {
+                    "description": "Your own data. Ignored by stackatlas, shown in the details panel."
+                  }
                 }
               }
             ]
           }
+        }
+      },
+      "patternProperties": {
+        "^x-": {
+          "description": "Your own data. Ignored by stackatlas, shown in the details panel."
         }
       }
     },
@@ -305,7 +339,17 @@
           "default": true,
           "description": "Set to false to skip the RDAP lookup. Reserved TLDs such as .example, .test and .internal are never looked up."
         }
+      },
+      "patternProperties": {
+        "^x-": {
+          "description": "Your own data. Ignored by stackatlas, shown in the details panel."
+        }
       }
+    }
+  },
+  "patternProperties": {
+    "^x-": {
+      "description": "Your own data. Ignored by stackatlas, shown in the details panel."
     }
   }
 }

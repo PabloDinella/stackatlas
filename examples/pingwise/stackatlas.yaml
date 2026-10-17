@@ -2,6 +2,7 @@
 #
 # Pingwise: uptime monitoring with status pages. A monorepo, so one file
 # describes all of its parts.
+atlas: ../atlas.yaml   # where this file is included from
 owner: Own products
 group: Pingwise
 

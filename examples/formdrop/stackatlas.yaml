@@ -2,6 +2,7 @@
 #
 # FormDrop: a form backend for static sites. Development is paused, but it
 # keeps running for its paying customers.
+atlas: ../atlas.yaml   # where this file is included from
 owner: Own products
 group: FormDrop
 

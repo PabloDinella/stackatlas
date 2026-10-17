@@ -66,7 +66,8 @@ function buildElements({ projects, domains, services }) {
   for (const d of Object.values(domains)) {
     const days = daysUntil(d.expires);
     const when = days == null ? "" : days < 0 ? ` · expired ${-days} d ago` : ` · ${days} d`;
-    const second = d.error ? d.error : `${d.registrar ?? "registrar unknown"} · ${fmtDate(d.expires)}${when}`;
+    const second = d.error ?? (!d.registrar && !d.expires ? "no registration data"
+      : `${d.registrar ?? "registrar unknown"} · ${fmtDate(d.expires)}${when}`);
     add({
       data: { id: gid("dom", d.name), label: `${d.name}\n${second}`, kind: "domain", ref: d.name },
       classes: `${domainState(d)}${d.projects.length ? "" : " orphan"}`,
@@ -225,6 +226,7 @@ function clearFocus() {
 function showDetails(node) {
   const kind = node.data("kind");
   const ref = node.data("ref");
+  const extra = (obj) => Object.entries(obj ?? {}).map(([k, v]) => [k, typeof v === "object" ? JSON.stringify(v) : v]);
   const names = (nodes) => nodes.map((n) => fullName(atlas.projects.find((p) => p.id === n.data("ref")))).join(", ");
   let title = node.data("label").split("\n")[0];
   let rows = [];
@@ -234,7 +236,7 @@ function showDetails(node) {
     title = fullName(p);
     rows = [["Type", p.type], ["Status", p.status], ["Owner", p.owner], ["Group", p.group], ["URL", link(p.url)],
             ["Repository", link(p.repo)], ["Resources", p.resources.map((r) => r.notes ? `${r.key} (${esc(r.notes)})` : r.key).join(", ")],
-            ["Notes", p.notes], ["Defined in", link(p.source.fileUrl, p.source.label)]];
+            ["Notes", p.notes], ...extra(p.extra), ["Defined in", link(p.source.fileUrl, p.source.label)]];
   } else if (kind === "domain") {
     const d = atlas.domains[ref];
     const days = daysUntil(d.expires);
@@ -242,17 +244,18 @@ function showDetails(node) {
             ["Registered", d.registered && fmtDate(d.registered)], ["DNS", d.dns],
             ["Nameservers", d.nameservers?.join(", ")], ["Auto-renew", d.meta.auto_renew == null ? null : d.meta.auto_renew ? "yes" : "no"],
             ["Yearly cost", d.meta.cost != null ? `${d.meta.cost} ${d.meta.currency ?? ""}` : null],
-            ["Notes", d.meta.notes], ["Lookup", d.error]];
+            ["Notes", d.meta.notes], ...extra(d.meta.extra), ["Lookup", d.error]];
   } else if (kind === "service") {
     const s = atlas.services[ref];
     rows = [["Category", CATEGORIES[s.category] ?? s.category], ["Plan", s.plan], ["Account", s.account],
-            ["Dashboard", link(s.url)], ["Used by", names(projectsOf(node))], ["Notes", s.notes]];
+            ["Dashboard", link(s.url)], ["Used by", names(projectsOf(node))], ["Notes", s.notes], ...extra(s.extra)];
   } else if (kind === "resource") {
     const [sid, rid] = ref.split("/");
     const s = atlas.services[sid];
     title = `${s.name} ${s.resources[rid].name}`;
     const usage = atlas.projects.flatMap((p) => p.resources.filter((r) => r.key === ref && r.notes).map((r) => `${fullName(p)}: ${r.notes}`));
-    rows = [["Used by", names(projectsOf(node))], ["Usage notes", usage.join("; ")], ["Notes", s.resources[rid].notes]];
+    rows = [["Used by", names(projectsOf(node))], ["Usage notes", usage.join("; ")], ["Notes", s.resources[rid].notes],
+            ...extra(s.resources[rid].extra)];
   } else {
     rows = [["Projects", names(projectsOf(node))]];
   }
@@ -271,6 +274,14 @@ function showWarnings() {
   $("warnings").classList.toggle("open");
 }
 
+function showPartOf(refs) {
+  const bar = $("part-of");
+  bar.hidden = !refs.length;
+  bar.innerHTML = refs.length
+    ? `This file is part of ${refs.map((r) => `<a href="?atlas=${encodeURIComponent(r)}">${esc(r)}</a>`).join(" and ")}. Open it to see the whole atlas.`
+    : "";
+}
+
 // --- loading --------------------------------------------------------------------
 
 async function refresh() {
@@ -286,6 +297,7 @@ async function refresh() {
     if (!atlas.files.length) throw new Error(atlas.warnings.map((w) => `${w.file}: ${w.message}`).join("\n"));
 
     document.title = $("title").textContent = atlas.title;
+    showPartOf(atlas.partOf);
     const elements = buildElements(atlas);
     const signature = JSON.stringify(elements);
     if (signature !== drawn || !cy) {
