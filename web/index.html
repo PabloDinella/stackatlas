@@ -34,6 +34,7 @@
   <span class="project">Project</span>
   <span class="service">Service / resource</span>
   <span class="orphan">Planned or unlinked</span>
+  <span class="missing">Not loaded</span>
   <span class="hint">Click to focus · <kbd>Esc</kbd> shows everything</span>
 </div>
 
@@ -42,6 +43,7 @@
   <aside id="details" class="panel"><button class="close" aria-label="Close (Esc)">✕</button><div class="body"></div></aside>
   <aside id="warnings" class="panel"><button class="close" aria-label="Close (Esc)">✕</button><div class="body"></div></aside>
   <div id="error"></div>
+  <div id="loading" hidden><span class="spinner" aria-hidden="true"></span><span id="loading-text">Loading…</span></div>
 </div>
 
 <script src="vendor/cytoscape.min.js"></script>

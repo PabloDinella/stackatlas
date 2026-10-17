@@ -243,6 +243,13 @@ and run `stackatlas <atlas>`.
 | `STACKATLAS_SOURCE` | The atlas to open, if not given as an argument. |
 | `STACKATLAS_ADDR` | Address to listen on (default `:8080`). |
 
+**Files not loading?** They show up in the map as red *Not loaded* boxes; click
+one to see why and what to do. The server log (`docker logs <container>`)
+says at startup whether each token is set, and logs every failed read with
+whether a token went with it. Note that `-e GITLAB_TOKEN` only passes the
+variable on if it is exported in your shell, and that GitLab answers *404 Not
+Found* (not 403) when a token can't access a private project.
+
 **Security.** To read private repositories, the server proxies requests to
 GitHub and GitLab with your tokens. It only fetches `.yaml`/`.yml` files from
 those hosts, so the tokens cannot be used through it to read source code, but

@@ -36,7 +36,7 @@ function domainState(d) {
 
 // --- graph ----------------------------------------------------------------------
 
-function buildElements({ projects, domains, services }) {
+function buildElements({ projects, domains, services, failed }) {
   const els = [];
   const added = new Set();
   const add = (el) => { if (!added.has(el.data.id)) { added.add(el.data.id); els.push(el); } };
@@ -61,6 +61,11 @@ function buildElements({ projects, domains, services }) {
     });
     for (const d of p.domains) add({ data: { id: gid("e", `${d}~${p.id}`), source: gid("dom", d), target: gid("prj", p.id) } });
     for (const r of p.resources) add({ data: { id: gid("e", `${p.id}~${r.key}`), source: gid("prj", p.id), target: gid("res", r.key) } });
+  }
+
+  // Files that could not be read: something is missing from the map
+  for (const [i, f] of failed.entries()) {
+    add({ data: { id: gid("miss", f.label), label: `Not loaded\n${f.label}`, kind: "missing", ref: i }, classes: "missing" });
   }
 
   for (const d of Object.values(domains)) {
@@ -106,6 +111,7 @@ function style() {
     { selector: "node.project", style: box("project") },
     { selector: "node.service, node.resource", style: box("service") },
     { selector: "node.orphan", style: { "border-style": "dashed" } },
+    { selector: "node.missing", style: { ...box("expired"), "border-style": "dashed", "border-width": 1.5 } },
     { selector: ":parent", style: {
       "text-valign": "top", "text-halign": "center", "text-margin-y": -4, "font-size": 13, "font-weight": 500, color: v("--fg"),
       "border-color": v("--border"), "border-width": 1, padding: "14px" } },
@@ -249,6 +255,11 @@ function showDetails(node) {
     const s = atlas.services[ref];
     rows = [["Category", CATEGORIES[s.category] ?? s.category], ["Plan", s.plan], ["Account", s.account],
             ["Dashboard", link(s.url)], ["Used by", names(projectsOf(node))], ["Notes", s.notes], ...extra(s.extra)];
+  } else if (kind === "missing") {
+    const f = atlas.failed[ref];
+    title = "Not loaded";
+    rows = [["File", link(f.url, f.label)], ["Why", f.message], ["Included from", f.includedFrom],
+            ["Effect", "Projects, services and domains defined in this file are missing from the map."]];
   } else if (kind === "resource") {
     const [sid, rid] = ref.split("/");
     const s = atlas.services[sid];
@@ -284,16 +295,34 @@ function showPartOf(refs) {
 
 // --- loading --------------------------------------------------------------------
 
+// Progress goes over the empty stage on the first load, and next to the
+// status afterwards, so a reload doesn't hide the map
+function loading(text) {
+  const firstLoad = !drawn;
+  $("loading").hidden = !text || !firstLoad;
+  $("loading-text").textContent = text ?? "";
+  if (text && !firstLoad) $("status").innerHTML = `<span class="spinner" aria-hidden="true"></span>${esc(text)}`;
+}
+
+let loadId = 0;
 async function refresh() {
   if (!source) return;
-  $("status").textContent = "Loading…";
+  const id = ++loadId; // a newer reload makes this one stale
+  loading("Loading atlas…");
   $("error").style.display = "none";
   try {
-    atlas = await loadAtlas(source, ctx);
-    await Promise.all(Object.values(atlas.domains).map(async (d) => {
+    atlas = await loadAtlas(source, { ...ctx, onProgress: ({ loaded, total }) =>
+      id === loadId && loading(`Loading atlas files (${loaded} of ${total})…`) });
+    const domainList = Object.values(atlas.domains);
+    let looked = 0;
+    loading(`Looking up domains (0 of ${domainList.length})…`);
+    await Promise.all(domainList.map(async (d) => {
       const lookup = d.meta.lookup !== false && !RESERVED_TLDS.has(d.name.split(".").at(-1));
       Object.assign(d, lookup ? await lookupDomain(d.name) : {}, pick(d.meta, ["registrar", "expires", "registered", "dns"]));
+      if (id === loadId) loading(`Looking up domains (${++looked} of ${domainList.length})…`);
     }));
+    if (id !== loadId) return;
+    loading("Drawing…");
     if (!atlas.files.length) throw new Error(atlas.warnings.map((w) => `${w.file}: ${w.message}`).join("\n"));
 
     document.title = $("title").textContent = atlas.title;
@@ -320,10 +349,13 @@ async function refresh() {
     const resources = new Set(atlas.projects.flatMap((p) => p.resources.map((r) => r.key))).size;
     $("status").textContent = `${atlas.projects.length} projects · ${domains.length} domains · ${resources} resources`
       + (expiring ? ` · ${expiring} domain(s) expiring` : "")
+      + (atlas.failed.length ? ` · ${atlas.failed.length} file(s) not loaded` : "")
       + ` · ${new Date().toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}`;
     $("warnings-btn").hidden = !atlas.warnings.length;
     $("warnings-btn").firstChild.textContent = `${atlas.warnings.length} warning${atlas.warnings.length === 1 ? "" : "s"}`;
+    loading(null);
   } catch (e) {
+    loading(null);
     $("status").textContent = "Error";
     $("error").style.display = "block";
     $("error").textContent = `Could not load ${source}\n\n${e.message}`;
@@ -347,7 +379,7 @@ async function init() {
     const res = await fetch("api/config");
     if (res.ok) config = await res.json();
   } catch { /* static hosting: no server */ }
-  ctx = { proxy: !!config.proxy };
+  ctx = { proxy: !!config.proxy, tokens: config.tokens };
 
   const fromUrl = new URLSearchParams(location.search).get("atlas");
   source = fromUrl ?? config.source ?? null;

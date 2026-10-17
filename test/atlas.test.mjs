@@ -89,3 +89,28 @@ test("a federated file opened on its own works and points to its atlas", async (
   assert.equal(a.projects.length, 1);
   assert.deepEqual(a.partOf, ["github:someone/my-atlas/atlas.yaml"]);
 });
+
+test("failed files are listed, with a reason that says what to do", async () => {
+  const realFetch = globalThis.fetch;
+  const answers = { "github:a/missing": [404, "none"], "gitlab:g/no-access": [404, "gitlab"], "gitlab:g/expired": [401, "gitlab"], "github:a/scope": [403, "github"] };
+  globalThis.fetch = async (url) => {
+    const ref = Object.keys(answers).find((r) => decodeURIComponent(url).includes(r.split(":")[1].split("/")[1]));
+    if (url.startsWith("file:")) return realFetch(url);
+    const [status, token] = answers[ref];
+    return { ok: false, status, headers: { get: () => token }, text: async () => "" };
+  };
+  try {
+    const dir = mkdtempSync(join(tmpdir(), "stackatlas-"));
+    writeFileSync(join(dir, "atlas.yaml"), `include: [${Object.keys(answers).join(", ")}]\n`);
+    const a = await loadAtlas(pathToFileURL(join(dir, "atlas.yaml")).href, { proxy: true, tokens: { github: false, gitlab: true } });
+    const why = Object.fromEntries(a.failed.map((f) => [f.label, f.message]));
+    assert.equal(a.failed.length, 4);
+    assert.match(why["github:a/missing"], /GITHUB_TOKEN isn't set/);
+    assert.match(why["gitlab:g/no-access"], /token can access this repository/);
+    assert.match(why["gitlab:g/expired"], /rejected the token/);
+    assert.match(why["github:a/scope"], /Contents: read-only/);
+    assert.ok(a.failed.every((f) => f.includedFrom));
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});

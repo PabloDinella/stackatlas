@@ -99,13 +99,23 @@ Flags:
 			"proxy":       true,
 			"version":     version,
 			"gitlabHosts": p.gitlabHosts,
+			// Whether tokens are set, never their values
+			"tokens": map[string]bool{"github": p.githubToken != "", "gitlab": p.gitlabToken != ""},
 		})
 	})
 	mux.Handle("/api/fetch", p)
 
+	log.Printf("GitHub token: %s, GitLab token: %s", setOrNot(p.githubToken), setOrNot(p.gitlabToken))
 	log.Printf("stackatlas %s listening on %s", version, *addr)
 	srv := &http.Server{Addr: *addr, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
 	log.Fatal(srv.ListenAndServe())
+}
+
+func setOrNot(token string) string {
+	if token == "" {
+		return "not set"
+	}
+	return "set"
 }
 
 func envOr(key, fallback string) string {
@@ -200,14 +210,17 @@ func (p *proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req, _ := http.NewRequestWithContext(r.Context(), http.MethodGet, target.String(), nil)
+	token := "none"
 	switch {
 	case target.Host == "raw.githubusercontent.com" && isYAML(target.Path):
 		if p.githubToken != "" {
 			req.Header.Set("Authorization", "Bearer "+p.githubToken)
+			token = "github"
 		}
 	case p.isGitlab(target.Host) && p.isGitlabYAML(target.EscapedPath()):
 		if p.gitlabToken != "" {
 			req.Header.Set("PRIVATE-TOKEN", p.gitlabToken)
+			token = "gitlab"
 		}
 	default:
 		http.Error(w, "only .yaml files on GitHub or GitLab can be fetched", http.StatusForbidden)
@@ -221,8 +234,12 @@ func (p *proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode >= 400 {
+		log.Printf("fetch %s: %d (token: %s)", target.Redacted(), resp.StatusCode, token)
+	}
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("X-Stackatlas-Token", token) // which token went with the request, so errors can say so
 	w.WriteHeader(resp.StatusCode)
 	io.Copy(w, io.LimitReader(resp.Body, maxFileSize))
 }

@@ -104,26 +104,56 @@ export function parseRef(ref, from) {
 
 // --- loading --------------------------------------------------------------------
 
+const HOSTS = { github: ["GitHub", "GITHUB_TOKEN", "Contents: read-only"], gitlab: ["GitLab", "GITLAB_TOKEN", "the read_api scope"] };
+
+// Explains a failed read in terms of what to do about it
+function fetchError(status, source, ctx, tokenSent) {
+  const [host, variable, permission] = HOSTS[source.kind] ?? ["the server", "a token", "read access"];
+  if (status === 401) return `${host} rejected the token (${variable}): is it expired or mistyped?`;
+  if (status === 403) return `the token (${variable}) can't read this file; it needs ${permission}`;
+  if (status !== 404) return `HTTP ${status}`;
+  if (!HOSTS[source.kind]) return "file not found";
+  if (tokenSent) {
+    return `not found with the token (${variable}): check the repository and path, and that the token can access this repository`
+      + (source.kind === "gitlab" ? " (GitLab answers 404 when a token lacks access)" : "");
+  }
+  if (ctx.proxy) {
+    return ctx.tokens?.[source.kind]
+      ? "not found: check the repository and path"
+      : `not found, or the repository is private and ${variable} isn't set on the server`;
+  }
+  return "not found, or the repository is private (this viewer can only read public repositories; self-host stackatlas for private ones)";
+}
+
 async function fetchText(source, ctx) {
   const proxied = ctx.proxy && (source.kind === "github" || source.kind === "gitlab");
   const res = await fetch(proxied ? `api/fetch?url=${encodeURIComponent(source.url)}` : source.url, { cache: "no-store" });
-  if (res.status === 404) throw new Error("file not found (or the repository is private and no token is set)");
-  if (res.status === 401 || res.status === 403) throw new Error(`access denied (${res.status}); is a token needed?`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  if (!res.ok) {
+    const tokenSent = proxied && (res.headers?.get?.("X-Stackatlas-Token") ?? "none") !== "none";
+    throw new Error(fetchError(res.status, source, ctx, tokenSent));
+  }
   return res.text();
 }
 
 const asArray = (v) => v == null ? [] : Array.isArray(v) ? v : [v];
 
-/** Loads the atlas at `rootRef`. Never throws for problems in files: they become warnings. */
+/**
+ * Loads the atlas at `rootRef`. Never throws for problems in files: they become
+ * warnings, and files that could not be read are listed in `failed`.
+ * `ctx.onProgress({ loaded, total })` is called as files arrive.
+ */
 export async function loadAtlas(rootRef, ctx = {}) {
   const files = [];
   const warnings = [];
+  const failed = [];
   const seen = new Set();
+  let loaded = 0;
+  const progress = () => ctx.onProgress?.({ loaded, total: seen.size });
 
-  async function visit(source, depth, order) {
+  async function visit(source, depth, order, parent) {
     if (seen.has(source.url)) return;
     seen.add(source.url);
+    progress();
     if (depth > MAX_DEPTH) {
       warnings.push({ file: source.label, message: `includes nested deeper than ${MAX_DEPTH} levels; stopped here` });
       return;
@@ -134,7 +164,11 @@ export async function loadAtlas(rootRef, ctx = {}) {
       if (typeof doc !== "object" || Array.isArray(doc)) throw new Error("the file must be a YAML mapping");
     } catch (e) {
       warnings.push({ file: source.label, url: source.fileUrl, message: e.message });
+      failed.push({ label: source.label, url: source.fileUrl, message: e.message, includedFrom: parent?.label ?? null });
       return;
+    } finally {
+      loaded++;
+      progress();
     }
     files.push({ source, doc, depth, order });
     await Promise.all(asArray(doc.include).map((ref, i) => {
@@ -143,13 +177,13 @@ export async function loadAtlas(rootRef, ctx = {}) {
         warnings.push({ file: source.label, url: source.fileUrl, message: e.message });
         return null;
       }
-      return visit(child, depth + 1, [...order, i]);
+      return visit(child, depth + 1, [...order, i], source);
     }));
   }
 
   await visit(parseRef(rootRef), 0, []);
   files.sort((a, b) => a.order.join(".").localeCompare(b.order.join("."), undefined, { numeric: true }));
-  return merge(files, warnings);
+  return { ...merge(files, warnings), failed };
 }
 
 // --- reading files tolerantly ------------------------------------------------------
