@@ -238,7 +238,7 @@ and run `stackatlas <atlas>`.
 | Variable | Purpose |
 |---|---|
 | `GITHUB_TOKEN` | Read private GitHub repositories. A [fine-grained token](https://github.com/settings/personal-access-tokens) with read-only **Contents** access to the repositories in your atlas is enough. |
-| `GITLAB_TOKEN` | Read private GitLab repositories. A token with the `read_api` scope. |
+| `GITLAB_TOKEN` | Read private GitLab repositories. A fine-grained token with the **Repository: Read** project permission on the projects in your atlas, or a legacy token with the `read_api` scope. |
 | `STACKATLAS_GITLAB_HOSTS` | Self-hosted GitLab hosts, comma-separated (gitlab.com is always allowed). |
 | `STACKATLAS_SOURCE` | The atlas to open, if not given as an argument. |
 | `STACKATLAS_ADDR` | Address to listen on (default `:8080`). |

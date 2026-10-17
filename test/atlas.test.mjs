@@ -97,7 +97,8 @@ test("failed files are listed, with a reason that says what to do", async () => 
     const ref = Object.keys(answers).find((r) => decodeURIComponent(url).includes(r.split(":")[1].split("/")[1]));
     if (url.startsWith("file:")) return realFetch(url);
     const [status, token] = answers[ref];
-    return { ok: false, status, headers: { get: () => token }, text: async () => "" };
+    const body = status === 403 ? '{"error":"insufficient_granular_scope","error_description":"Needs [Repository: Read]."}' : "";
+    return { ok: false, status, headers: { get: () => token }, text: async () => body };
   };
   try {
     const dir = mkdtempSync(join(tmpdir(), "stackatlas-"));
@@ -109,6 +110,7 @@ test("failed files are listed, with a reason that says what to do", async () => 
     assert.match(why["gitlab:g/no-access"], /token can access this repository/);
     assert.match(why["gitlab:g/expired"], /rejected the token/);
     assert.match(why["github:a/scope"], /Contents: read-only/);
+    assert.match(why["github:a/scope"], /GitHub says: "Needs \[Repository: Read\]\."/);
     assert.ok(a.failed.every((f) => f.includedFrom));
   } finally {
     globalThis.fetch = realFetch;

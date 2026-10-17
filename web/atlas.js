@@ -104,7 +104,21 @@ export function parseRef(ref, from) {
 
 // --- loading --------------------------------------------------------------------
 
-const HOSTS = { github: ["GitHub", "GITHUB_TOKEN", "Contents: read-only"], gitlab: ["GitLab", "GITLAB_TOKEN", "the read_api scope"] };
+const HOSTS = {
+  github: ["GitHub", "GITHUB_TOKEN", "Contents: read-only (fine-grained token) or the repo scope (classic token)"],
+  gitlab: ["GitLab", "GITLAB_TOKEN", "Repository: Read (fine-grained token) or the read_api scope (legacy token)"],
+};
+
+// GitHub and GitLab often say exactly what is wrong; pass that on
+async function hostMessage(res) {
+  try {
+    const text = (await res.text()).trim();
+    try {
+      const json = JSON.parse(text);
+      return json.error_description ?? json.message ?? json.error ?? null;
+    } catch { return text && text.length < 300 && !text.startsWith("<") ? text : null; }
+  } catch { return null; }
+}
 
 // Explains a failed read in terms of what to do about it
 function fetchError(status, source, ctx, tokenSent) {
@@ -130,7 +144,9 @@ async function fetchText(source, ctx) {
   const res = await fetch(proxied ? `api/fetch?url=${encodeURIComponent(source.url)}` : source.url, { cache: "no-store" });
   if (!res.ok) {
     const tokenSent = proxied && (res.headers?.get?.("X-Stackatlas-Token") ?? "none") !== "none";
-    throw new Error(fetchError(res.status, source, ctx, tokenSent));
+    const said = res.status === 404 ? null : await hostMessage(res);
+    const [host] = HOSTS[source.kind] ?? ["The server"];
+    throw new Error(fetchError(res.status, source, ctx, tokenSent) + (said ? `. ${host} says: "${said}"` : ""));
   }
   return res.text();
 }
