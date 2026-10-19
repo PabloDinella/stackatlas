@@ -1,6 +1,7 @@
 import { loadAtlas } from "./atlas.js";
 import { lookupDomain } from "./rdap.js";
 import { CATEGORIES } from "./catalog.js";
+import { initAnalytics, track } from "./analytics.js";
 
 const WARN_DAYS = 60;
 const EXAMPLE = "github:PabloDinella/stackatlas/examples/atlas.yaml";
@@ -279,6 +280,7 @@ function showDetails(node) {
 }
 
 function showWarnings() {
+  if (!$("warnings").classList.contains("open")) track("warnings_opened", { warnings: atlas.warnings.length });
   $("warnings").querySelector(".body").innerHTML = `<h2>Warnings</h2><ul>` + atlas.warnings
     .map((w) => `<li>${esc(w.message)}<small>${w.url ? link(w.url, w.file) : esc(w.file)}</small></li>`).join("") + "</ul>";
   $("details").classList.remove("open");
@@ -334,7 +336,12 @@ async function refresh() {
       cy?.destroy();
       $("cy").style.visibility = "hidden"; // nodes jump around until the layout settles
       cy = cytoscape({ container: $("cy"), elements, style: style(), minZoom: 0.2, maxZoom: 2.5, wheelSensitivity: 0.3 });
-      cy.on("tap", (e) => e.target === cy ? clearFocus() : e.target.isNode() && focus(e.target));
+      cy.on("tap", (e) => {
+        if (e.target === cy) return clearFocus();
+        if (!e.target.isNode()) return;
+        focus(e.target);
+        track("node_focused", { kind: e.target.data("kind") });
+      });
       await runLayout();
       cy.fit(undefined, 30);
       $("cy").style.visibility = "";
@@ -354,13 +361,26 @@ async function refresh() {
     $("warnings-btn").hidden = !atlas.warnings.length;
     $("warnings-btn").firstChild.textContent = `${atlas.warnings.length} warning${atlas.warnings.length === 1 ? "" : "s"}`;
     loading(null);
+    if (trackedSource !== source) {
+      trackedSource = source;
+      // Sizes and kinds only: never the address or any names
+      track("atlas_loaded", {
+        source_kind: sourceKind(source), self_hosted: ctx.proxy, files: atlas.files.length,
+        failed_files: atlas.failed.length, warnings: atlas.warnings.length, projects: atlas.projects.length,
+        domains: domains.length, resources, services: new Set(atlas.projects.flatMap((p) => p.resources.map((r) => r.service))).size,
+      });
+    }
   } catch (e) {
     loading(null);
+    track("atlas_load_failed", { source_kind: sourceKind(source), self_hosted: ctx.proxy });
     $("status").textContent = "Error";
     $("error").style.display = "block";
     $("error").textContent = `Could not load ${source}\n\n${e.message}`;
   }
 }
+
+let trackedSource = null;
+const sourceKind = (ref) => /^(github|gitlab):/.test(ref) ? ref.split(":")[0] : ref.startsWith("/local/") ? "local" : "url";
 
 function open(ref) {
   source = ref;
@@ -380,6 +400,7 @@ async function init() {
     if (res.ok) config = await res.json();
   } catch { /* static hosting: no server */ }
   ctx = { proxy: !!config.proxy, tokens: config.tokens };
+  initAnalytics(config); // no-op unless configured
 
   const fromUrl = new URLSearchParams(location.search).get("atlas");
   source = fromUrl ?? config.source ?? null;
@@ -395,7 +416,7 @@ async function init() {
 }
 
 $("open").addEventListener("submit", (e) => { e.preventDefault(); open($("atlas-input").value.trim()); });
-$("try-example").addEventListener("click", (e) => { e.preventDefault(); open(EXAMPLE); });
+$("try-example").addEventListener("click", (e) => { e.preventDefault(); track("example_opened"); open(EXAMPLE); });
 $("refresh").addEventListener("click", refresh);
 $("fit").addEventListener("click", () => cy?.animate({ fit: { padding: 30 } }, { duration: 250 }));
 $("warnings-btn").addEventListener("click", () => atlas && showWarnings());

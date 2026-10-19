@@ -26,6 +26,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      # Usage analytics for the hosted viewer, if the repository variable
+      # POSTHOG_KEY is set (Settings → Secrets and variables → Actions →
+      # Variables). Forks without it publish a viewer with no analytics.
+      - name: Configure analytics
+        if: ${{ vars.POSTHOG_KEY != '' }}
+        env:
+          KEY: ${{ vars.POSTHOG_KEY }}
+          HOST: ${{ vars.POSTHOG_HOST || 'https://us.i.posthog.com' }}
+        run: jq -n --arg key "$KEY" --arg host "$HOST" '{key: $key, host: $host}' > web/analytics.json
       - uses: actions/upload-pages-artifact@v3
         with:
           path: web

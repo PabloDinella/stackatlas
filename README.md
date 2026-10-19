@@ -242,6 +242,8 @@ and run `stackatlas <atlas>`.
 | `STACKATLAS_GITLAB_HOSTS` | Self-hosted GitLab hosts, comma-separated (gitlab.com is always allowed). |
 | `STACKATLAS_SOURCE` | The atlas to open, if not given as an argument. |
 | `STACKATLAS_ADDR` | Address to listen on (default `:8080`). |
+| `STACKATLAS_POSTHOG_KEY` | Turns on [usage analytics](#privacy) with your own PostHog project. Off when unset. |
+| `STACKATLAS_POSTHOG_HOST` | PostHog host, e.g. `https://eu.i.posthog.com` (default `https://us.i.posthog.com`). |
 
 **Files not loading?** They show up in the map as red *Not loaded* boxes; click
 one to see why and what to do. The server log (`docker logs <container>`)
@@ -256,6 +258,20 @@ those hosts, so the tokens cannot be used through it to read source code, but
 anyone who can reach the server can read the YAML files your tokens can.
 Scope the tokens to the repositories in your atlas, and keep the server on
 your private network (or behind authentication).
+
+## Privacy
+
+The [hosted viewer](https://pablodinella.github.io/stackatlas/) counts how it
+is used with [PostHog](https://posthog.com), to learn what to improve. It sends
+page views and a few events (an atlas loaded, a node clicked, warnings opened)
+with **counts and kinds only**: how many projects, domains, files and warnings,
+whether the atlas came from GitHub, GitLab or a URL. It never sends the atlas
+address or the names of repositories, projects, services or domains, and the
+page URL is sent without its `?atlas=` part. There are no cookies and no
+session recordings, and Do Not Track or Global Privacy Control turn it off.
+
+Self-hosted stackatlas sends nothing, unless you set `STACKATLAS_POSTHOG_KEY`
+to collect the same data in your own PostHog project.
 
 ## How it works
 
