@@ -1,9 +1,11 @@
-// Optional usage analytics with PostHog, off unless configured:
-//   - the hosted viewer gets a key at deploy time, in analytics.json;
-//   - a self-hosted server passes STACKATLAS_POSTHOG_KEY through /api/config.
+// Usage analytics with PostHog, for the hosted viewer only: its key comes in
+// analytics.json, written at deploy time by the Pages workflow. Self-hosted
+// servers never load it, and forks without the key send nothing.
 //
-// Only counts and kinds are sent, never atlas addresses or the names of
-// repositories, projects or domains. No cookies (memory persistence), no
+// Sent: page views and a few events with counts and kinds, plus the address of
+// an atlas once it has loaded (which proves it is public). Never sent: the
+// address of an atlas that failed to load, query strings, the page title, or
+// names of projects or domains. No cookies (memory persistence), no
 // autocapture, no session recording, and Do Not Track / Global Privacy
 // Control turn it off.
 
@@ -30,14 +32,13 @@ function scrub(value) {
 }
 
 export async function initAnalytics(config = {}) {
-  let key = config.posthogKey;
-  let host = config.posthogHost;
-  if (!key) {
-    try {
-      const res = await fetch("analytics.json", { cache: "no-store" });
-      if (res.ok) ({ key, host } = await res.json());
-    } catch { /* not configured */ }
-  }
+  if (config.proxy) return; // self-hosted: never
+  let key;
+  let host;
+  try {
+    const res = await fetch("analytics.json", { cache: "no-store" });
+    if (res.ok) ({ key, host } = await res.json());
+  } catch { /* not configured */ }
   if (!key || navigator.doNotTrack === "1" || navigator.globalPrivacyControl) return;
 
   try {
@@ -62,7 +63,12 @@ export async function initAnalytics(config = {}) {
   }
 }
 
-/** Sends an event if analytics is on. Props must never hold names or addresses. */
+/** An atlas reference without query string or fragment, which could hold secrets. */
+export function publicRef(ref) {
+  return /^https?:\/\//.test(ref) ? stripQuery(ref) : String(ref).split(/[?#]/)[0];
+}
+
+/** Sends an event if analytics is on. Props hold counts and kinds, plus loaded atlas addresses. */
 export function track(event, props = {}) {
   posthog?.capture(event, props);
 }

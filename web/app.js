@@ -1,7 +1,7 @@
 import { loadAtlas } from "./atlas.js";
 import { lookupDomain } from "./rdap.js";
 import { CATEGORIES } from "./catalog.js";
-import { initAnalytics, track } from "./analytics.js";
+import { initAnalytics, track, publicRef } from "./analytics.js";
 
 const WARN_DAYS = 60;
 const EXAMPLE = "github:PabloDinella/stackatlas/examples/atlas.yaml";
@@ -363,16 +363,16 @@ async function refresh() {
     loading(null);
     if (trackedSource !== source) {
       trackedSource = source;
-      // Sizes and kinds only: never the address or any names
+      // It loaded in the public viewer, so the address is public; failures send only the kind
       track("atlas_loaded", {
-        source_kind: sourceKind(source), self_hosted: ctx.proxy, files: atlas.files.length,
+        atlas: publicRef(source), source_kind: sourceKind(source), files: atlas.files.length,
         failed_files: atlas.failed.length, warnings: atlas.warnings.length, projects: atlas.projects.length,
         domains: domains.length, resources, services: new Set(atlas.projects.flatMap((p) => p.resources.map((r) => r.service))).size,
       });
     }
   } catch (e) {
     loading(null);
-    track("atlas_load_failed", { source_kind: sourceKind(source), self_hosted: ctx.proxy });
+    track("atlas_load_failed", { source_kind: sourceKind(source) });
     $("status").textContent = "Error";
     $("error").style.display = "block";
     $("error").textContent = `Could not load ${source}\n\n${e.message}`;
@@ -400,7 +400,7 @@ async function init() {
     if (res.ok) config = await res.json();
   } catch { /* static hosting: no server */ }
   ctx = { proxy: !!config.proxy, tokens: config.tokens };
-  initAnalytics(config); // no-op unless configured
+  initAnalytics(config); // hosted viewer only, and only if deployed with a key
 
   const fromUrl = new URLSearchParams(location.search).get("atlas");
   source = fromUrl ?? config.source ?? null;

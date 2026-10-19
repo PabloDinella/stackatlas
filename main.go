@@ -57,8 +57,6 @@ Environment:
   STACKATLAS_GITLAB_HOSTS  extra self-hosted GitLab hosts, comma-separated
   STACKATLAS_SOURCE        atlas, when not given as an argument
   STACKATLAS_ADDR          address to listen on (default :8080)
-  STACKATLAS_POSTHOG_KEY   PostHog project key, to turn on usage analytics (off by default)
-  STACKATLAS_POSTHOG_HOST  PostHog host (default https://us.i.posthog.com)
 
 Flags:
 `)
@@ -103,9 +101,6 @@ Flags:
 			"gitlabHosts": p.gitlabHosts,
 			// Whether tokens are set, never their values
 			"tokens": map[string]bool{"github": p.githubToken != "", "gitlab": p.gitlabToken != ""},
-			// Optional usage analytics; off unless set
-			"posthogKey":  os.Getenv("STACKATLAS_POSTHOG_KEY"),
-			"posthogHost": os.Getenv("STACKATLAS_POSTHOG_HOST"),
 		})
 	})
 	mux.Handle("/api/fetch", p)
