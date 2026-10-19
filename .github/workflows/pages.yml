@@ -34,7 +34,8 @@ jobs:
         env:
           KEY: ${{ vars.POSTHOG_KEY }}
           HOST: ${{ vars.POSTHOG_HOST || 'https://us.i.posthog.com' }}
-        run: jq -n --arg key "$KEY" --arg host "$HOST" '{key: $key, host: $host}' > web/analytics.json
+        run: |
+          jq -n --arg key "$KEY" --arg host "$HOST" '{key: $key, host: $host}' > web/analytics.json
       - uses: actions/upload-pages-artifact@v3
         with:
           path: web
